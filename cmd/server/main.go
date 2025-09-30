@@ -1,19 +1,20 @@
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "net/http"
-    "os"
-    "os/signal"
-    "syscall"
-    "time"
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-    "go-market/config"
-    "go-market/internal/api"
-    "go-market/internal/repo/cache"
-    "go-market/internal/repo/postgres"
+	"go-market/config"
+	"go-market/internal/api"
+	"go-market/internal/models"
+	"go-market/internal/repo/cache"
+	"go-market/internal/repo/postgres"
 )
 
 func main() {
@@ -28,6 +29,12 @@ func main() {
     if err != nil {
         log.Fatalf("failed to connect to DB: %v", err)
     }
+     // AutoMigrate all your structs here
+    // Run migrations
+    if err := db.AutoMigrate(&models.User{}, &models.Product{}, &models.Order{}); err != nil {
+        log.Fatalf("failed to migrate database: %v", err)
+    }
+
     defer postgres.CloseDB(db)
 
     // Connect to Redis
