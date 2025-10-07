@@ -1,15 +1,16 @@
 package api
 
 import (
-    "go-market/internal/api/handlers"
-    "go-market/internal/api/middleware"
-    "go-market/internal/repo/cache"
+	"go-market/internal/api/handlers"
+	"go-market/internal/api/middleware"
+	"go-market/internal/jobs"
+	"go-market/internal/repo/cache"
 
-    "github.com/gin-gonic/gin"
-    "gorm.io/gorm"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-func NewRouter(db *gorm.DB, redis *cache.RedisClient, jwtSecret string) *gin.Engine {
+func NewRouter(db *gorm.DB, redis *cache.RedisClient, jwtSecret string, queue *jobs.JobQueue) *gin.Engine {
     r := gin.Default()
 
     // Public routes
@@ -30,6 +31,13 @@ func NewRouter(db *gorm.DB, redis *cache.RedisClient, jwtSecret string) *gin.Eng
         productGroup.GET("/:id", handlers.GetProduct(db))
         productGroup.PUT("/:id", handlers.UpdateProduct(db))
         productGroup.DELETE("/:id", handlers.DeleteProduct(db))
+    }
+
+    orderGroup := r.Group("/orders")
+    orderGroup.Use(middleware.JWTAuth(jwtSecret))
+    {
+        orderGroup.POST("", handlers.CreateOrder(db, queue))
+        orderGroup.GET("", handlers.ListOrders(db))
     }
 
     return r

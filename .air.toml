@@ -1,0 +1,36 @@
+# Air config for Go Market project
+# Auto rebuild + restart on file changes
+# Docs: https://github.com/cosmtrek/air
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# Build command
+cmd = "go build -o ./tmp/main.exe ./cmd/server"
+# Run after build
+bin = "./tmp/main.exe"
+# Debounce delay (ms)
+delay = 1000
+
+# Watch these directories
+include_dir = ["."]
+exclude_dir = ["tmp", "vendor", "node_modules"]
+
+# File types to watch
+include_ext = ["go", "tpl", "tmpl", "html"]
+exclude_file = ["air.toml"]
+
+# Kill previous process before restart
+kill_signal = "SIGTERM"
+
+[log]
+time = true
+
+[colors]
+main = "yellow"
+watcher = "cyan"
+build = "green"
+runner = "magenta"
+
+APP_ENV = "development"

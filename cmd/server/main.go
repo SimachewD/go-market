@@ -12,6 +12,7 @@ import (
 
 	"go-market/config"
 	"go-market/internal/api"
+	"go-market/internal/jobs"
 	"go-market/internal/models"
 	"go-market/internal/repo/cache"
 	"go-market/internal/repo/postgres"
@@ -29,7 +30,7 @@ func main() {
     if err != nil {
         log.Fatalf("failed to connect to DB: %v", err)
     }
-     // AutoMigrate all your structs here
+    
     // Run migrations
     if err := db.AutoMigrate(&models.User{}, &models.Product{}, &models.Order{}); err != nil {
         log.Fatalf("failed to migrate database: %v", err)
@@ -41,8 +42,13 @@ func main() {
     redisClient := cache.NewRedisClient(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
     defer redisClient.Close()
 
+    // start workers
+    jobQueue := jobs.NewJobQueue(db, 3) // 3 worker goroutines
+    jobQueue.Start()
+    defer jobQueue.Stop()
+
     // Setup router
-    r := api.NewRouter(db, redisClient, cfg.JWTSecret)
+    r := api.NewRouter(db, redisClient, cfg.JWTSecret, jobQueue)
 
     srv := &http.Server{
         Addr:    fmt.Sprintf(":%d", cfg.Port),

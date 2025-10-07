@@ -6,8 +6,8 @@ import (
 
 type Order struct {
     gorm.Model
-    UserID    uint
-    ProductID uint
-    Quantity  int
-    Status    string
+    UserID    uint   `gorm:"not null"`
+    ProductID uint   `gorm:"not null"`
+    Quantity  int    `gorm:"not null"`
+    Status    string `gorm:"default:'pending'"` // pending, processing, completed, failed
 }
