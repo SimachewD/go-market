@@ -38,7 +38,14 @@ func NewRouter(db *gorm.DB, redis *cache.RedisClient, jwtSecret string, queue *j
     {
         orderGroup.POST("", handlers.CreateOrder(db, queue))
         orderGroup.GET("", handlers.ListOrders(db))
+        orderGroup.GET("/:id", handlers.GetOrder(db))
     }
+
+    // wsGroup := r.Group("/ws")
+    // wsGroup.Use(middleware.JWTAuth(jwtSecret))
+    // {
+    //     wsGroup.GET("", handlers.WebSocketHandler(wsManager))
+    // }
 
     return r
 }

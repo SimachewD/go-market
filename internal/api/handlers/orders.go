@@ -63,3 +63,29 @@ func ListOrders(db *gorm.DB) gin.HandlerFunc {
         c.JSON(http.StatusOK, orders)
     }
 }
+
+func GetOrder(db *gorm.DB) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        userIDRaw, exists := c.Get("userID")
+        if !exists {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found in context"})
+            return
+        }
+        userID := userIDRaw.(uint)
+
+        id := c.Param("id")
+        if id == "" {
+            c.JSON(400, gin.H{"error": "missing id"})
+            return
+        }
+        
+        var order models.Order
+        if err := db.Where("user_id = ? AND id = ?", userID, id).First(&order).Error; err != nil {
+            c.JSON(http.StatusNotFound, gin.H{"error": "order not found"})
+            return
+        }
+
+        c.JSON(http.StatusOK, order)
+    }
+}
+
