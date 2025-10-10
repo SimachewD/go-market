@@ -72,7 +72,7 @@ func main() {
     log.Println("Shutting down server...")
 
     // Stop accepting new jobs
-    jobQueue.Shutdown()
+    // jobQueue.Shutdown()
 
     ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
     defer cancel()
