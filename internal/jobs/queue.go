@@ -1,8 +1,7 @@
 package jobs
 
 import (
-	"sync"
-	"time"
+	// "sync"
 
 	"gorm.io/gorm"
 )
@@ -11,7 +10,7 @@ type JobQueue struct {
     Jobs chan uint
     DB *gorm.DB
     Workers int
-    wg         sync.WaitGroup
+    // wg         sync.WaitGroup
 }
 
 func NewJobQueue(db *gorm.DB, workers int) *JobQueue {
@@ -28,16 +27,15 @@ func (q *JobQueue) Enqueue(orderID uint) {
 
 func (q *JobQueue) Start() {
     for i := 0; i < q.Workers; i++ {
-        q.wg.Add(1)
+        // q.wg.Add(1)
         go q.worker(i)
     }
 }
 
 func (q *JobQueue) worker(id int) {
-    defer q.wg.Done()
+    // defer q.wg.Done()
     
     orderID := <-q.Jobs
-    time.Sleep(30 * time.Second)
     q.processOrder(orderID)
 }
 

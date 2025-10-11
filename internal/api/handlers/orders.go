@@ -1,13 +1,14 @@
 package handlers
 
 import (
-    "net/http"
+	"net/http"
+	"strconv"
 
-    "go-market/internal/models"
-    "go-market/internal/jobs"
+	"go-market/internal/jobs"
+	"go-market/internal/models"
 
-    "github.com/gin-gonic/gin"
-    "gorm.io/gorm"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type CreateOrderRequest struct {
@@ -58,8 +59,24 @@ func ListOrders(db *gorm.DB) gin.HandlerFunc {
         }
         userID := userIDRaw.(uint)
 
+        page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+        limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+        status := c.Query("status") // optional filter by order status
+
         var orders []models.Order
-        db.Where("user_id = ?", userID).Find(&orders)
+        query := db.Where("user_id = ?", userID)
+        if status != "" {
+            query = query.Where("status = ?", status)
+        }
+
+        offset := (page - 1) * limit
+        query = query.Offset(offset).Limit(limit).Order("created_at desc")
+
+        if err := query.Find(&orders).Error; err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch orders"})
+            return
+        }
+
         c.JSON(http.StatusOK, orders)
     }
 }

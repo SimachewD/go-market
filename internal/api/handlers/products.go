@@ -1,13 +1,16 @@
 package handlers
 
 import (
-    "net/http"
-    // "strconv"
+	"fmt"
+	"net/http"
+	"strconv"
 
-    "go-market/internal/models"
+	// "strconv"
 
-    "github.com/gin-gonic/gin"
-    "gorm.io/gorm"
+	"go-market/internal/models"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type CreateProductRequest struct {
@@ -43,8 +46,37 @@ func CreateProduct(db *gorm.DB) gin.HandlerFunc {
 
 func ListProducts(db *gorm.DB) gin.HandlerFunc {
     return func(c *gin.Context) {
+        // Query params
+        page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+        limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+        sort := c.DefaultQuery("sort", "id")        // e.g., price, name
+        order := c.DefaultQuery("order", "asc")     // asc or desc
+        minPrice, _ := strconv.ParseFloat(c.DefaultQuery("min_price", "0"), 64)
+        maxPrice, _ := strconv.ParseFloat(c.DefaultQuery("max_price", "0"), 64)
+
         var products []models.Product
-        db.Find(&products)
+        query := db.Model(&models.Product{})
+
+        // Filter by price range
+        if minPrice > 0 {
+            query = query.Where("price >= ?", minPrice)
+        }
+        if maxPrice > 0 {
+            query = query.Where("price <= ?", maxPrice)
+        }
+
+        // Sorting
+        query = query.Order(fmt.Sprintf("%s %s", sort, order))
+
+        // Pagination
+        offset := (page - 1) * limit
+        query = query.Offset(offset).Limit(limit)
+
+        if err := query.Find(&products).Error; err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch products"})
+            return
+        }
+
         c.JSON(http.StatusOK, products)
     }
 }
