@@ -7,4 +7,5 @@ type User struct {
     Username string `gorm:"uniqueIndex;not null"`
     Email    string `gorm:"uniqueIndex;not null"`
     Password string `gorm:"not null"`
+    IsAdmin  bool   `gorm:"default:false"`
 }

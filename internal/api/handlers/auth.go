@@ -23,6 +23,44 @@ type LoginRequest struct {
     Password string `json:"password" binding:"required"`
 }
 
+// POST /admin/create
+func CreateAdmin(db *gorm.DB) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        // Get values from context
+        isAdminVal, exists := c.Get("isAdmin")
+        if !exists || !isAdminVal.(bool) {
+            c.JSON(http.StatusForbidden, gin.H{"error": "unauthorized"})
+            return
+        }
+
+        var req RegisterRequest
+        if err := c.ShouldBindJSON(&req); err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+            return
+        }
+
+        hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
+            return
+        }
+
+        admin := models.User{
+            Username: req.Username,
+            Email:    req.Email,
+            Password: string(hashedPassword),
+            IsAdmin:  true,
+        }
+
+        if err := db.Create(&admin).Error; err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+            return
+        }
+
+        c.JSON(http.StatusCreated, gin.H{"message": "Admin created successfully"})
+    }
+}
+
 func RegisterUser(db *gorm.DB) gin.HandlerFunc {
     return func(c *gin.Context) {
         var req RegisterRequest
@@ -38,10 +76,16 @@ func RegisterUser(db *gorm.DB) gin.HandlerFunc {
             return
         }
 
+        // Bootstrap logic: make the very first user an admin
+        // var count int64
+        // db.Model(&models.User{}).Count(&count)
+        // isAdmin := count == 0
+
         user := models.User{
             Username: req.Username,
             Email:    req.Email,
             Password: string(hashed),
+            // IsAdmin: isAdmin,
         }
 
         if err := db.Create(&user).Error; err != nil {
@@ -72,7 +116,7 @@ func LoginUser(db *gorm.DB, jwtSecret string) gin.HandlerFunc {
             return
         }
 
-        token, err := auth.GenerateJWT(user.ID, jwtSecret, 24*time.Hour)
+        token, err := auth.GenerateJWT(user.ID, user.IsAdmin, jwtSecret, 24*time.Hour)
         if err != nil {
             c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
             return

@@ -5,6 +5,7 @@ import (
 	"go-market/internal/api/middleware"
 	"go-market/internal/jobs"
 	"go-market/internal/repo/cache"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -12,6 +13,10 @@ import (
 
 func NewRouter(db *gorm.DB, redis *cache.RedisClient, jwtSecret string, queue *jobs.JobQueue) *gin.Engine {
     r := gin.Default()
+
+    // Rate limiter: 10 requests per 10 seconds per IP
+	rateLimiter := middleware.NewRateLimiter(10, 10*time.Second)
+	r.Use(rateLimiter.Limit())
 
     // Public routes
     r.GET("/health", handlers.HealthCheck)
@@ -23,15 +28,21 @@ func NewRouter(db *gorm.DB, redis *cache.RedisClient, jwtSecret string, queue *j
     }
 
     // Protected routes
-    productGroup := r.Group("/products")
-    productGroup.Use(middleware.JWTAuth(jwtSecret))
+    adminGroup := r.Group("/admin")
+    adminGroup.Use(middleware.JWTAuth(jwtSecret), middleware.RequireAdmin())
     {
-        productGroup.POST("", handlers.CreateProduct(db))
-        productGroup.GET("", handlers.ListProducts(db))
-        productGroup.GET("/:id", handlers.GetProduct(db))
-        productGroup.PUT("/:id", handlers.UpdateProduct(db))
-        productGroup.DELETE("/:id", handlers.DeleteProduct(db))
+        adminGroup.POST("/products", handlers.CreateProduct(db))
+        adminGroup.PUT("/products/:id", handlers.UpdateProduct(db))
+        adminGroup.DELETE("/products/:id", handlers.DeleteProduct(db))
     }
+
+    userGroup := r.Group("/products")
+    userGroup.Use(middleware.JWTAuth(jwtSecret))
+    {
+        userGroup.GET("/", handlers.ListProducts(db))
+        userGroup.GET("/:id", handlers.GetProduct(db))
+    }
+
 
     orderGroup := r.Group("/orders")
     orderGroup.Use(middleware.JWTAuth(jwtSecret))

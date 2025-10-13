@@ -34,6 +34,7 @@ func JWTAuth(secret string) gin.HandlerFunc {
 
         // Store user ID in context
         c.Set("userID", claims.UserID)
+        c.Set("isAdmin", claims.IsAdmin)
         c.Next()
     }
 }
