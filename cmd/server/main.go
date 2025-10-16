@@ -71,8 +71,10 @@ func main() {
     <-quit
     log.Println("Shutting down server...")
 
+    jobs_ctx, jobs_cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer jobs_cancel()
     // Stop accepting new jobs
-    // jobQueue.Shutdown()
+    jobQueue.Stop(jobs_ctx)
 
     ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
     defer cancel()

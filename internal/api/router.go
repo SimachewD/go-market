@@ -19,6 +19,7 @@ func NewRouter(db *gorm.DB, redis *cache.RedisClient, jwtSecret string, queue *j
 	r.Use(rateLimiter.Limit())
 
     // Public routes
+    r.GET("/", handlers.SlowHandler)
     r.GET("/health", handlers.HealthCheck)
 
     authGroup := r.Group("/auth")
