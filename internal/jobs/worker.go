@@ -1,8 +1,8 @@
-
 package jobs
 
 import (
 	"fmt"
+	"go-market/internal/models"
 	"time"
 )
 
@@ -10,27 +10,32 @@ func (q *JobQueue) worker(id int) {
 	fmt.Printf("[Worker-%d] Started\n", id)
 
 	for orderID := range q.Jobs {
-		var attempt int
-		for {
-			err := q.processOrder(orderID)
-			if err == nil {
-				fmt.Printf("[Worker-%d] Order %d processed successfully\n", id, orderID)
-				break
+		err := q.processOrder(orderID)
+		if err == nil {
+			fmt.Printf("[Worker-%d] Order %d processed successfully\n", id, orderID)
+			continue
+		}
+
+		var order models.Order
+		if err := q.DB.First(&order, orderID).Error; err == nil {
+			order.RetryCount++
+			fmt.Printf("[Worker-%d] Order %d failed (attempt %d/%d): %v\n", id, orderID, order.RetryCount, q.MaxRetries, err)
+
+			if order.RetryCount >= q.MaxRetries {
+				order.Status = "dead_letter"
+				q.DB.Save(&order)
+				fmt.Printf("[Worker-%d] Order %d moved to Dead-Letter Queue\n", id, orderID)
+			} else {
+				order.Status = "pending"
+				q.DB.Save(&order)
+
+				// Non-blocking retry with backoff
+				backoff := time.Duration(order.RetryCount) * q.RetryBackoff
+				go func(id uint, d time.Duration) {
+					time.Sleep(d)
+					q.Jobs <- id
+				}(orderID, backoff)
 			}
-
-			attempt++
-			fmt.Printf("[Worker-%d] Order %d failed (attempt %d/%d): %v\n", id, orderID, attempt, q.MaxRetries, err)
-
-			if attempt >= q.MaxRetries {
-				fmt.Printf("[Worker-%d] Moving order %d to Dead-Letter Queue\n", id, orderID)
-				q.DeadLetters <- orderID
-				break
-			}
-
-			// Doubled backoff
-			backoff := time.Duration(attempt) * q.RetryBackoff
-			fmt.Printf("[Worker-%d] Retrying order %d in %v...\n", id, orderID, backoff)
-			time.Sleep(backoff)
 		}
 	}
 }
