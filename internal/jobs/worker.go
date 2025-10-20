@@ -27,14 +27,10 @@ func (q *JobQueue) worker(id int) {
 				fmt.Printf("[Worker-%d] Order %d moved to Dead-Letter Queue\n", id, orderID)
 			} else {
 				order.Status = "pending"
-				q.DB.Save(&order)
-
-				// Non-blocking retry with backoff
 				backoff := time.Duration(order.RetryCount) * q.RetryBackoff
-				go func(id uint, d time.Duration) {
-					time.Sleep(d)
-					q.Jobs <- id
-				}(orderID, backoff)
+
+				order.NextRetryAt = time.Now().Add(backoff)
+				q.DB.Save(&order)
 			}
 		}
 	}

@@ -28,20 +28,22 @@ func NewRouter(db *gorm.DB, redis *cache.RedisClient, jwtSecret string, queue *j
         authGroup.POST("/login", handlers.LoginUser(db, jwtSecret))
     }
 
-    // Protected routes
+	// Protected routes
     adminGroup := r.Group("/admin")
     adminGroup.Use(middleware.JWTAuth(jwtSecret), middleware.RequireAdmin())
-    {
-        adminGroup.POST("/products", handlers.CreateProduct(db))
-        adminGroup.PUT("/products/:id", handlers.UpdateProduct(db))
-        adminGroup.DELETE("/products/:id", handlers.DeleteProduct(db))
-    }
+	{
+		adminGroup.GET("/deadletters", handlers.ListDeadLetters(db))
+		adminGroup.POST("/reprocess/:id", handlers.ReprocessOrder(db, queue))
+	}
 
     userGroup := r.Group("/products")
     userGroup.Use(middleware.JWTAuth(jwtSecret))
     {
+        userGroup.POST("/", handlers.CreateProduct(db))
         userGroup.GET("/", handlers.ListProducts(db))
         userGroup.GET("/:id", handlers.GetProduct(db))
+        userGroup.PUT("/:id", handlers.UpdateProduct(db))
+        userGroup.DELETE("/:id", handlers.DeleteProduct(db))
     }
 
 

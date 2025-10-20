@@ -38,7 +38,8 @@ func (q *JobQueue) Start() {
     for i := 0; i < q.Workers; i++ {
         go q.worker(i)
     }
-    // go q.handleDeadLetters()
+    // Load and run scheduled retries
+	go q.retryOrders()
 }
 
 func (q *JobQueue) Stop(ctx context.Context) {

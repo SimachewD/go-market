@@ -42,12 +42,9 @@ func main() {
     redisClient := cache.NewRedisClient(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
     defer redisClient.Close()
 
-    // wsManager := ws.NewManager() // create websocket manager
-
     // start workers
     jobQueue := jobs.NewJobQueue(db, 3) // 3 worker goroutines
     jobQueue.Start()
-    // defer jobQueue.Stop()
 
     // Setup router
     r := api.NewRouter(db, redisClient, cfg.JWTSecret, jobQueue)

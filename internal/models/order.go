@@ -13,5 +13,5 @@ type Order struct {
     Quantity  int    `gorm:"not null"`
     Status    string `gorm:"default:'pending'"` // pending, processing, completed, failed
     RetryCount  int       // number of retry attempts
-    NextRetryAt time.Time // optional: schedule next retry
+    NextRetryAt time.Time // schedule next retry
 }

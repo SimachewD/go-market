@@ -106,3 +106,46 @@ func GetOrder(db *gorm.DB) gin.HandlerFunc {
     }
 }
 
+func ListDeadLetters(db *gorm.DB) gin.HandlerFunc {
+    return func(c *gin.Context){
+        var orders []models.Order
+        if err := db.Where("status = ?", "dead_letter").Find(&orders).Error; err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        }
+        c.JSON(http.StatusOK, gin.H{"dead_letters": orders})
+    }
+}
+
+func ReprocessOrder(db *gorm.DB, queue *jobs.JobQueue) gin.HandlerFunc{
+    return func(c *gin.Context) {
+        idStr := c.Param("id")
+        id, err := strconv.Atoi(idStr)
+        if err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "invalid order id"})
+            return
+        }
+
+        var order models.Order
+        if err := db.First(&order, id).Error; err != nil {
+            c.JSON(http.StatusNotFound, gin.H{"error": "order not found"})
+            return
+        }
+
+        if order.Status != "dead_letter" {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "order is not in dead_letter state"})
+            return
+        }
+
+        order.Status = "pending"
+        order.RetryCount = 0
+        db.Save(&order)
+
+        queue.Enqueue(order.ID)
+
+        c.JSON(http.StatusOK, gin.H{
+            "message": "order requeued for processing",
+            "order_id": order.ID,
+        })
+    }
+}
+
