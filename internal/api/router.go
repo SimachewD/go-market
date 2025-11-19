@@ -9,6 +9,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
+    "github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func NewRouter(db *gorm.DB, redis *cache.RedisClient, jwtSecret string, queue *jobs.JobQueue) *gin.Engine {
@@ -53,6 +55,12 @@ func NewRouter(db *gorm.DB, redis *cache.RedisClient, jwtSecret string, queue *j
         orderGroup.POST("", handlers.CreateOrder(db, queue))
         orderGroup.GET("", handlers.ListOrders(db))
         orderGroup.GET("/:id", handlers.GetOrder(db))
+    }
+
+    metricsGroup := r.Group("/metrics")
+    metricsGroup.Use(middleware.JWTAuth(jwtSecret), middleware.RequireAdmin())
+    {
+        metricsGroup.GET("", gin.WrapH(promhttp.Handler()))
     }
 
     // wsGroup := r.Group("/ws")
